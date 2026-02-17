@@ -41,7 +41,8 @@ bot.onText(/\/start\s?(.*)?/, (msg, match) => {
   }
 
   // ⚠️ TEMP (local test) — later we change to your HTTPS URL
-  const WEBAPP_URL = "http://localhost:3000";
+  const WEBAPP_URL = "https://telegram-miniapp-p6qa.onrender.com";
+
 
   bot.sendMessage(msg.chat.id, "Open Dashboard 👇", {
     reply_markup: {
