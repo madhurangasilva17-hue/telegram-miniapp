@@ -3,110 +3,244 @@
 <head>
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>Mini App</title>
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 
 <style>
-body{
-margin:0;
-font-family:system-ui;
-background:#f3f6fb;
-color:#111;
-}
+  :root{
+    --bg:#f3f6fb;
+    --card:#ffffff;
+    --text:#0f172a;
+    --muted:#64748b;
+    --blue:#1e88e5;
+    --shadow:0 10px 24px rgba(0,0,0,.06);
+    --radius:18px;
+  }
+  *{box-sizing:border-box}
+  body{
+    margin:0;
+    font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial;
+    background:var(--bg);
+    color:var(--text);
+  }
+  .container{max-width:520px;margin:auto;padding:16px 16px 24px}
+  .top{
+    display:flex;justify-content:space-between;align-items:center;
+    margin:6px 0 14px;
+  }
+  .brand{font-weight:900;font-size:16px;color:var(--muted)}
+  .pill{
+    background:#eaf4ff;color:var(--blue);
+    padding:8px 12px;border-radius:999px;font-weight:800;font-size:13px;
+  }
 
-.container{
-max-width:500px;
-margin:auto;
-padding:16px;
-}
+  .card{
+    background:var(--card);
+    border-radius:var(--radius);
+    padding:16px;
+    margin-bottom:14px;
+    box-shadow:var(--shadow);
+  }
 
-.card{
-background:white;
-border-radius:16px;
-padding:16px;
-margin-bottom:14px;
-box-shadow:0 8px 20px rgba(0,0,0,.05);
-}
+  .row{display:flex;gap:12px;align-items:center}
+  .avatar{
+    width:44px;height:44px;border-radius:50%;
+    background:linear-gradient(135deg,#dbeafe,#eef2ff);
+    display:grid;place-items:center;
+    font-weight:900;color:#1f2937;
+  }
+  h2{margin:0;font-size:22px;line-height:1.1}
+  .muted{color:var(--muted);font-size:13px;margin-top:4px}
 
-h2{margin:0 0 4px}
+  .balance{
+    font-size:30px;
+    font-weight:900;
+    color:var(--blue);
+    margin-top:10px;
+  }
 
-.balance{
-font-size:26px;
-font-weight:800;
-color:#1e88e5;
-}
+  .btnrow{display:flex;gap:10px;flex-wrap:wrap;margin-top:10px}
+  .btn{
+    flex:1;
+    min-width:140px;
+    padding:12px 14px;
+    border:none;
+    border-radius:14px;
+    font-weight:800;
+    cursor:pointer;
+  }
+  .btn.primary{background:var(--blue);color:white;box-shadow:0 12px 26px rgba(30,136,229,.25)}
+  .btn.soft{background:#eaf4ff;color:var(--blue)}
+  .btn.gray{background:#eef2f7;color:#334155}
+  .ref{
+    font-size:13px;
+    word-break:break-all;
+    color:#334155;
+    font-weight:700;
+    margin-top:8px;
+  }
 
-.btn{
-width:100%;
-padding:14px;
-border:none;
-border-radius:12px;
-font-weight:700;
-background:#1e88e5;
-color:white;
-margin-top:10px;
-}
+  /* Loader */
+  .loaderwrap{
+    display:flex;align-items:center;gap:12px;
+  }
+  .spinner{
+    width:18px;height:18px;border-radius:50%;
+    border:3px solid #dbeafe;border-top-color:var(--blue);
+    animation:spin 0.8s linear infinite;
+  }
+  @keyframes spin{to{transform:rotate(360deg)}}
 
-.ref{
-font-size:13px;
-word-break:break-all;
-color:#555;
-}
+  .toast{margin-top:10px;font-size:13px;color:var(--muted)}
+  .bad{color:#ef4444;font-weight:800}
+  .ok{color:#16a34a;font-weight:800}
 </style>
 </head>
 
 <body>
 <div class="container">
 
-<div class="card">
-<h2 id="name">Loading...</h2>
-<div>Balance</div>
-<div class="balance"><span id="bal">0</span> LKR</div>
-</div>
+  <div class="top">
+    <div class="brand">Dashboard</div>
+    <div class="pill">Secure</div>
+  </div>
 
-<div class="card">
-<b>Your Referral Link</b>
-<div class="ref" id="link"></div>
-<button class="btn" onclick="copy()">Copy Link</button>
-</div>
+  <!-- USER CARD -->
+  <div class="card">
+    <div class="row">
+      <div class="avatar" id="av">U</div>
+      <div>
+        <h2 id="name">Loading…</h2>
+        <div class="muted" id="hint">Getting your details</div>
+      </div>
+    </div>
+
+    <div class="balance"><span id="bal">0</span> LKR</div>
+
+    <div class="toast" id="status">
+      <span class="loaderwrap"><span class="spinner"></span> Loading data…</span>
+    </div>
+
+    <div class="btnrow">
+      <button class="btn gray" id="refreshBtn">Refresh</button>
+      <button class="btn soft" id="shareBtn">Share</button>
+    </div>
+  </div>
+
+  <!-- REF CARD -->
+  <div class="card">
+    <b>Your Referral Link</b>
+    <div class="ref" id="link">—</div>
+
+    <div class="btnrow">
+      <button class="btn primary" id="copyBtn">Copy Link</button>
+      <button class="btn soft" id="openBotBtn">Open Bot</button>
+    </div>
+
+    <div class="toast">
+      If someone joins using your link, you’ll get referral rewards.
+    </div>
+  </div>
 
 </div>
 
 <script>
-const tg = window.Telegram.WebApp;
-tg.expand();
+  const tg = window.Telegram.WebApp;
+  tg.expand();
 
-const BOT = "easycashsrilanka_bot";
+  // ✅ bot username (NO @)
+  const BOT = "easycashsrilanka_bot";
 
-const user = tg.initDataUnsafe.user;
+  const el = (id)=>document.getElementById(id);
 
-async function load(){
-if(!user){
-document.getElementById("name").innerText="Open inside Telegram";
-return;
-}
+  function setStatus(html){
+    el("status").innerHTML = html;
+  }
 
-await fetch("/ensure-user",{
-method:"POST",
-headers:{'Content-Type':'application/json'},
-body:JSON.stringify({id:String(user.id),name:user.first_name})
-});
+  function referralLink(code){
+    return `https://t.me/${BOT}?start=${code}`;
+  }
 
-const res = await fetch("/user/"+user.id);
-const data = await res.json();
+  async function safeFetch(url, opts){
+    // small timeout so UI doesn’t hang forever
+    const ctrl = new AbortController();
+    const t = setTimeout(()=>ctrl.abort(), 15000);
+    try{
+      const res = await fetch(url, { ...(opts||{}), signal: ctrl.signal });
+      clearTimeout(t);
+      return res;
+    }catch(e){
+      clearTimeout(t);
+      throw e;
+    }
+  }
 
-document.getElementById("name").innerText=data.name;
-document.getElementById("bal").innerText=data.balance;
+  async function load(){
+    const user = tg.initDataUnsafe?.user;
 
-const link=`https://t.me/${BOT}?start=${data.code}`;
-document.getElementById("link").innerText=link;
-}
+    if (!user){
+      el("name").innerText = "Open inside Telegram";
+      el("hint").innerText = "This page works only in Telegram Mini Apps.";
+      setStatus(`<span class="bad">Open the app from your bot menu.</span>`);
+      return;
+    }
 
-function copy(){
-navigator.clipboard.writeText(document.getElementById("link").innerText);
-tg.showAlert("Copied!");
-}
+    // avatar + basic
+    const n = user.first_name || "User";
+    el("name").innerText = n;
+    el("av").innerText = (n[0] || "U").toUpperCase();
+    el("hint").innerText = user.username ? ("@" + user.username) : ("ID: " + user.id);
 
-load();
+    setStatus(`<span class="loaderwrap"><span class="spinner"></span> Loading data…</span>`);
+
+    try{
+      // ensure-user
+      await safeFetch("/ensure-user",{
+        method:"POST",
+        headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({id:String(user.id), name:n})
+      });
+
+      // fetch user
+      const res = await safeFetch("/user/" + user.id);
+      const data = await res.json();
+
+      el("bal").innerText = (data.balance ?? 0);
+
+      const code = (data.code || "").toString().toUpperCase();
+      const link = referralLink(code);
+      el("link").innerText = link;
+
+      setStatus(`<span class="ok">Loaded ✓</span>`);
+      tg.HapticFeedback?.notificationOccurred("success");
+    }catch(e){
+      setStatus(`<span class="bad">Network/Server sleeping…</span> Try again in 20s.`);
+    }
+  }
+
+  // Buttons
+  el("copyBtn").onclick = async () => {
+    const text = el("link").innerText;
+    try{
+      await navigator.clipboard.writeText(text);
+      tg.showAlert("Copied!");
+    }catch(e){
+      tg.showAlert("Copy failed");
+    }
+  };
+
+  el("openBotBtn").onclick = () => {
+    tg.openTelegramLink?.(`https://t.me/${BOT}`);
+  };
+
+  el("shareBtn").onclick = () => {
+    const text = el("link").innerText;
+    tg.openTelegramLink?.(`https://t.me/share/url?url=${encodeURIComponent(text)}&text=${encodeURIComponent("Join via my referral link")}`);
+  };
+
+  el("refreshBtn").onclick = () => load();
+
+  load();
 </script>
 </body>
 </html>

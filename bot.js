@@ -1,7 +1,36 @@
+const TelegramBot = require("node-telegram-bot-api");
+const fs = require("fs");
+const path = require("path");
+
+const TOKEN = "PASTE_YOUR_BOT_TOKEN_HERE";
+const WEBAPP_URL = "https://telegram-miniapp-p6qa.onrender.com/?v=3";
+
+// referral bonus
+const REF_BONUS = 200;
+
+const bot = new TelegramBot(TOKEN, { polling: true });
+
+const DB_FILE = path.join(__dirname, "users.json");
+
+function loadDB() {
+  try {
+    const db = JSON.parse(fs.readFileSync(DB_FILE, "utf8"));
+    db.users = db.users || {};
+    db.codes = db.codes || {}; // code -> userId
+    db.withdrawals = db.withdrawals || [];
+    return db;
+  } catch {
+    return { users: {}, codes: {}, withdrawals: [] };
+  }
+}
+
+function saveDB(db) {
+  fs.writeFileSync(DB_FILE, JSON.stringify(db, null, 2));
+}
+
+// ✅ /start handler with referral code support
 bot.onText(/\/start\s?(.*)?/, (msg, match) => {
   const db = loadDB();
-  db.users = db.users || {};
-  db.codes = db.codes || {};
 
   const userId = String(msg.from.id);
   const param = (match && match[1]) ? String(match[1]).trim() : "";
@@ -9,7 +38,13 @@ bot.onText(/\/start\s?(.*)?/, (msg, match) => {
 
   // ensure user exists
   if (!db.users[userId]) {
-    db.users[userId] = { name: msg.from.first_name || "User", balance: 0, referrals: 0, code: "", daily: {} };
+    db.users[userId] = {
+      name: msg.from.first_name || "User",
+      balance: 0,
+      referrals: 0,
+      code: "",
+      daily: {}
+    };
   } else if (msg.from.first_name) {
     db.users[userId].name = msg.from.first_name;
   }
@@ -19,17 +54,12 @@ bot.onText(/\/start\s?(.*)?/, (msg, match) => {
   if (code && referrerId && referrerId !== userId && !db.users[userId].joinedVia) {
     db.users[userId].joinedVia = code;
 
-    // bonus per referral (change here)
-    const REF_BONUS = 200;
-
+    db.users[referrerId] = db.users[referrerId] || { name: "User", balance: 0, referrals: 0, code: "", daily: {} };
     db.users[referrerId].balance = (db.users[referrerId].balance || 0) + REF_BONUS;
     db.users[referrerId].referrals = (db.users[referrerId].referrals || 0) + 1;
   }
 
   saveDB(db);
-
-  const WEBAPP_URL = "https://telegram-miniapp-p6qa.onrender.com/?v=3";
-
 
   bot.sendMessage(msg.chat.id, "Open Dashboard 👇", {
     reply_markup: {
@@ -37,3 +67,5 @@ bot.onText(/\/start\s?(.*)?/, (msg, match) => {
     }
   });
 });
+
+console.log("✅ Bot is running...");
