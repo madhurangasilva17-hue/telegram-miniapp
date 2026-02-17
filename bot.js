@@ -2,11 +2,11 @@ const TelegramBot = require("node-telegram-bot-api");
 const fs = require("fs");
 const path = require("path");
 
-const TOKEN = "TOKEN_HERE"; // put your @testmysrilanka_bot token here (do NOT share)
-const WEBAPP_URL = "https://telegram-miniapp-p6qa.onrender.com/?v=10000";
+const TOKEN = "TOKEN_HERE"; // ✅ put your @testmysrilanka_bot token here (DO NOT SHARE)
+const WEBAPP_URL = "https://telegram-miniapp-p6qa.onrender.com/?v=20000"; // ✅ cache bust
 
-const REFERRER_BONUS = 200; // link owner
-const NEW_USER_BONUS = 100; // new user who joined via link
+const REFERRER_BONUS = 200; // link owner gets 200
+const NEW_USER_BONUS = 100; // new user gets 100
 
 const bot = new TelegramBot(TOKEN, { polling: true });
 
@@ -25,35 +25,45 @@ function loadDB() {
 function saveDB(db) {
   fs.writeFileSync(DB_FILE, JSON.stringify(db, null, 2));
 }
+function makeCode() {
+  return Math.random().toString(36).substring(2, 10).toUpperCase(); // 8 chars
+}
 
 bot.onText(/\/start\s?(.*)?/, (msg, match) => {
   const db = loadDB();
 
   const userId = String(msg.from.id);
+  const userName = msg.from.first_name || "User";
   const startParam = (match && match[1]) ? String(match[1]).trim() : "";
-  const code = startParam.toUpperCase();
+  const refCode = startParam.toUpperCase();
 
-  // ensure user exists
+  // ✅ Ensure user exists
   if (!db.users[userId]) {
+    // create user
+    let myCode = makeCode();
+    while (db.codes[myCode]) myCode = makeCode();
+
     db.users[userId] = {
       id: userId,
-      name: msg.from.first_name || "User",
+      name: userName,
       balance: 0,
       referrals: 0,
-      code: db.users[userId]?.code || "", // (not necessary, but safe)
+      code: myCode,
       joinedVia: null
     };
-  } else if (msg.from.first_name) {
-    db.users[userId].name = msg.from.first_name;
+    db.codes[myCode] = userId;
+  } else {
+    db.users[userId].name = userName;
   }
 
-  // ✅ Referral rewards only ONCE per user
-  if (code && !db.users[userId].joinedVia) {
-    const referrerId = db.codes[code]; // code is created in server.js /ensure-user
+  // ✅ Referral rewards only ONCE per user (joinedVia null)
+  if (refCode && !db.users[userId].joinedVia) {
+    const referrerId = db.codes[refCode];
 
-    // valid referral: code exists, not self
+    // valid referral: code exists & not self
     if (referrerId && referrerId !== userId) {
-      db.users[userId].joinedVia = code;
+      // mark joined
+      db.users[userId].joinedVia = refCode;
 
       // ensure referrer exists
       if (!db.users[referrerId]) {
@@ -68,20 +78,35 @@ bot.onText(/\/start\s?(.*)?/, (msg, match) => {
       }
 
       // 🎁 bonuses
-      db.users[userId].balance = (db.users[userId].balance || 0) + NEW_USER_BONUS;
-      db.users[referrerId].balance = (db.users[referrerId].balance || 0) + REFERRER_BONUS;
-      db.users[referrerId].referrals = (db.users[referrerId].referrals || 0) + 1;
+      db.users[userId].balance += NEW_USER_BONUS;
+      db.users[referrerId].balance += REFERRER_BONUS;
+      db.users[referrerId].referrals += 1;
     }
   }
 
   saveDB(db);
 
-  // open mini app
-  bot.sendMessage(msg.chat.id, "Open Dashboard 👇", {
-    reply_markup: {
-      inline_keyboard: [[{ text: "Open App", web_app: { url: WEBAPP_URL } }]]
+  // ✅ Send launch message + Open App button
+  const u = db.users[userId];
+
+  bot.sendMessage(
+    msg.chat.id,
+`👋 Hello ${u.name}!
+
+✅ Your account is ready.
+💰 Balance: ${u.balance} LKR
+👥 Referrals: ${u.referrals}
+
+👇 Click below to open the app:`,
+    {
+      reply_markup: {
+        inline_keyboard: [
+          [{ text: "🚀 Open App", web_app: { url: WEBAPP_URL } }],
+          [{ text: "📩 Share Referral Link", url: `https://t.me/share/url?url=${encodeURIComponent(`https://t.me/testmysrilanka_bot?start=${u.code}`)}&text=${encodeURIComponent("Join using my referral link!")}` }]
+        ]
+      }
     }
-  });
+  );
 });
 
 console.log("✅ Bot running...");

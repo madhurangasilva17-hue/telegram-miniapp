@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1"/>
-<title>Mini App</title>
+<title>Test Mini App</title>
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 
 <style>
@@ -13,9 +13,9 @@
   h2{margin:0 0 6px}
   .muted{color:#64748b;font-size:13px}
   .balance{font-size:30px;font-weight:900;color:#1e88e5;margin-top:10px}
-  .ref{font-size:13px;word-break:break-all;color:#334155;font-weight:700;margin-top:8px}
+  .ref{font-size:13px;word-break:break-all;color:#334155;font-weight:800;margin-top:8px}
   .btnrow{display:flex;gap:10px;flex-wrap:wrap;margin-top:10px}
-  button{flex:1;min-width:140px;padding:12px 14px;border:none;border-radius:12px;font-weight:800;cursor:pointer}
+  button{flex:1;min-width:140px;padding:12px 14px;border:none;border-radius:12px;font-weight:900;cursor:pointer}
   .primary{background:#1e88e5;color:#fff}
   .soft{background:#eaf4ff;color:#1e88e5}
 </style>
@@ -27,7 +27,8 @@
   <div class="card">
     <h2 id="name">Loading…</h2>
     <div class="muted" id="info">Please wait</div>
-    <div class="balance"><span id="bal">0</span> LKR</div>
+    <div class="balance"><span id="bal">—</span> LKR</div>
+    <div class="muted" style="margin-top:8px">This balance/referrals are handled by the bot database.</div>
   </div>
 
   <div class="card">
@@ -40,7 +41,7 @@
     </div>
 
     <div class="muted" style="margin-top:10px">
-      Anyone who starts the bot with your link becomes your referral.
+      New user gets <b>100 LKR</b> and you get <b>200 LKR</b>.
     </div>
   </div>
 
@@ -50,60 +51,41 @@
   const tg = window.Telegram.WebApp;
   tg.expand();
 
-  // ✅ IMPORTANT: your TEST bot username (no @)
+  // ✅ TEST BOT (no @)
   const BOT = "testmysrilanka_bot";
 
   const el = (id)=>document.getElementById(id);
 
-  function referralLink(code){
+  function linkFor(code){
     return `https://t.me/${BOT}?start=${code}`;
   }
 
-  async function load(){
-    const user = tg.initDataUnsafe?.user;
+  // In this simple version, UI shows Telegram user + referral link based on Telegram userId as code placeholder.
+  // Real referral codes are shown in bot welcome message; app can be extended with API if you want.
+  const user = tg.initDataUnsafe?.user;
 
-    if(!user){
-      el("name").innerText = "Open inside Telegram";
-      el("info").innerText = "This page works only in Telegram Mini Apps.";
-      return;
-    }
-
+  if(!user){
+    el("name").innerText = "Open inside Telegram";
+    el("info").innerText = "This page works only inside Telegram Mini Apps.";
+    el("bal").innerText = "0";
+  } else {
     el("name").innerText = user.first_name || "User";
     el("info").innerText = user.username ? ("@" + user.username) : ("ID: " + user.id);
+    el("bal").innerText = "0";
 
-    // ensure user+code
-    await fetch("/ensure-user",{
-      method:"POST",
-      headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({ id:String(user.id), name:user.first_name || "User" })
-    });
-
-    // load from DB
-    const res = await fetch("/user/" + user.id);
-    const data = await res.json();
-
-    el("bal").innerText = data.balance ?? 0;
-
-    const code = String(data.code || "").toUpperCase();
-    const link = referralLink(code);
+    // ⚠️ Here we show a link using user.id (simple). The bot gives the real unique code in /start message.
+    const link = linkFor(String(user.id));
     el("link").innerText = link;
 
-    // buttons
     el("copyBtn").onclick = async () => {
-      try{
-        await navigator.clipboard.writeText(link);
-        tg.showAlert("Copied!");
-      }catch(e){
-        tg.showAlert("Copy failed");
-      }
+      try{ await navigator.clipboard.writeText(link); tg.showAlert("Copied!"); }
+      catch(e){ tg.showAlert("Copy failed"); }
     };
 
     el("shareBtn").onclick = () => {
-      tg.openTelegramLink?.(`https://t.me/share/url?url=${encodeURIComponent(link)}&text=${encodeURIComponent("Join via my referral link")}`);
+      tg.openTelegramLink?.(`https://t.me/share/url?url=${encodeURIComponent(link)}&text=${encodeURIComponent("Join using my referral link!")}`);
     };
   }
-
-  load();
 </script>
 </body>
 </html>
