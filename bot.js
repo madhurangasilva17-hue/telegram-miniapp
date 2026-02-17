@@ -1,72 +1,61 @@
 const TelegramBot = require("node-telegram-bot-api");
 const fs = require("fs");
+const path = require("path");
 
-const token = "PASTE_YOUR_TOKEN_HERE";  // ← botfather token
-const bot = new TelegramBot(token, { polling: true });
+const TOKEN = "TOKEN_HERE"; // put your @testmysrilanka_bot token here (do NOT share)
+const WEBAPP_URL = "https://telegram-miniapp-p6qa.onrender.com/?v=999";
+const REF_BONUS = 200;
 
-const DB_FILE = "./users.json";
+const bot = new TelegramBot(TOKEN, { polling: true });
 
-/* load DB */
-function loadDB(){
-  if(!fs.existsSync(DB_FILE)){
-    fs.writeFileSync(DB_FILE, JSON.stringify({users:{}},null,2));
+const DB_FILE = path.join(__dirname, "users.json");
+
+function loadDB() {
+  try {
+    const db = JSON.parse(fs.readFileSync(DB_FILE, "utf8"));
+    db.users = db.users || {};
+    db.codes = db.codes || {}; // code -> userId
+    return db;
+  } catch {
+    return { users: {}, codes: {} };
   }
-  return JSON.parse(fs.readFileSync(DB_FILE));
+}
+function saveDB(db) {
+  fs.writeFileSync(DB_FILE, JSON.stringify(db, null, 2));
 }
 
-/* save DB */
-function saveDB(db){
-  fs.writeFileSync(DB_FILE, JSON.stringify(db,null,2));
-}
-
-/* create referral code */
-function makeCode(){
-  return Math.random().toString(36).substring(2,8).toUpperCase();
-}
-
-/* START COMMAND */
 bot.onText(/\/start\s?(.*)?/, (msg, match) => {
-
-  const userId = String(msg.from.id);
-  const refCode = match[1];
-
   const db = loadDB();
 
-  /* create user if not exists */
-  if(!db.users[userId]){
+  const userId = String(msg.from.id);
+  const code = (match && match[1]) ? String(match[1]).trim().toUpperCase() : "";
 
-    db.users[userId] = {
-      id:userId,
-      name:msg.from.first_name,
-      balance:0,
-      referrals:0,
-      code:makeCode()
-    };
+  // ensure user exists
+  if (!db.users[userId]) {
+    db.users[userId] = { id: userId, name: msg.from.first_name || "User", balance: 0, referrals: 0, code: "" };
+  } else if (msg.from.first_name) {
+    db.users[userId].name = msg.from.first_name;
+  }
 
-    /* referral logic */
-    if(refCode){
+  // referral: only first time per new user
+  if (code && !db.users[userId].joinedVia) {
+    const referrerId = db.codes[code]; // created by /ensure-user in server.js
+    if (referrerId && referrerId !== userId) {
+      db.users[userId].joinedVia = code;
 
-      const inviter = Object.values(db.users)
-        .find(u => u.code === refCode);
-
-      if(inviter && inviter.id !== userId){
-        inviter.balance += 200;
-        inviter.referrals += 1;
-      }
+      db.users[referrerId] = db.users[referrerId] || { id: referrerId, name: "User", balance: 0, referrals: 0, code: "" };
+      db.users[referrerId].balance = (db.users[referrerId].balance || 0) + REF_BONUS;
+      db.users[referrerId].referrals = (db.users[referrerId].referrals || 0) + 1;
     }
   }
 
   saveDB(db);
 
-  /* open mini app */
-  bot.sendMessage(userId,"Welcome!",{
-    reply_markup:{
-      inline_keyboard:[
-        [{ text:"Open App", web_app:{ url:"https://telegram-miniapp-p6qa.onrender.com/?v=10" }}]
-      ]
+  bot.sendMessage(msg.chat.id, "Open Dashboard 👇", {
+    reply_markup: {
+      inline_keyboard: [[{ text: "Open App", web_app: { url: WEBAPP_URL } }]]
     }
   });
-
 });
 
 console.log("✅ Bot running...");
