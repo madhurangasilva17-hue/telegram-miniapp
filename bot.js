@@ -1,71 +1,72 @@
 const TelegramBot = require("node-telegram-bot-api");
 const fs = require("fs");
-const path = require("path");
 
-const TOKEN = "PASTE_YOUR_BOT_TOKEN_HERE";
-const WEBAPP_URL = "https://telegram-miniapp-p6qa.onrender.com/?v=3";
+const token = "PASTE_YOUR_TOKEN_HERE";  // ← botfather token
+const bot = new TelegramBot(token, { polling: true });
 
-// referral bonus
-const REF_BONUS = 200;
+const DB_FILE = "./users.json";
 
-const bot = new TelegramBot(TOKEN, { polling: true });
-
-const DB_FILE = path.join(__dirname, "users.json");
-
-function loadDB() {
-  try {
-    const db = JSON.parse(fs.readFileSync(DB_FILE, "utf8"));
-    db.users = db.users || {};
-    db.codes = db.codes || {}; // code -> userId
-    db.withdrawals = db.withdrawals || [];
-    return db;
-  } catch {
-    return { users: {}, codes: {}, withdrawals: [] };
+/* load DB */
+function loadDB(){
+  if(!fs.existsSync(DB_FILE)){
+    fs.writeFileSync(DB_FILE, JSON.stringify({users:{}},null,2));
   }
+  return JSON.parse(fs.readFileSync(DB_FILE));
 }
 
-function saveDB(db) {
-  fs.writeFileSync(DB_FILE, JSON.stringify(db, null, 2));
+/* save DB */
+function saveDB(db){
+  fs.writeFileSync(DB_FILE, JSON.stringify(db,null,2));
 }
 
-// ✅ /start handler with referral code support
+/* create referral code */
+function makeCode(){
+  return Math.random().toString(36).substring(2,8).toUpperCase();
+}
+
+/* START COMMAND */
 bot.onText(/\/start\s?(.*)?/, (msg, match) => {
-  const db = loadDB();
 
   const userId = String(msg.from.id);
-  const param = (match && match[1]) ? String(match[1]).trim() : "";
-  const code = param ? param.toUpperCase() : "";
+  const refCode = match[1];
 
-  // ensure user exists
-  if (!db.users[userId]) {
+  const db = loadDB();
+
+  /* create user if not exists */
+  if(!db.users[userId]){
+
     db.users[userId] = {
-      name: msg.from.first_name || "User",
-      balance: 0,
-      referrals: 0,
-      code: "",
-      daily: {}
+      id:userId,
+      name:msg.from.first_name,
+      balance:0,
+      referrals:0,
+      code:makeCode()
     };
-  } else if (msg.from.first_name) {
-    db.users[userId].name = msg.from.first_name;
-  }
 
-  // referral: only first time
-  const referrerId = db.codes[code];
-  if (code && referrerId && referrerId !== userId && !db.users[userId].joinedVia) {
-    db.users[userId].joinedVia = code;
+    /* referral logic */
+    if(refCode){
 
-    db.users[referrerId] = db.users[referrerId] || { name: "User", balance: 0, referrals: 0, code: "", daily: {} };
-    db.users[referrerId].balance = (db.users[referrerId].balance || 0) + REF_BONUS;
-    db.users[referrerId].referrals = (db.users[referrerId].referrals || 0) + 1;
+      const inviter = Object.values(db.users)
+        .find(u => u.code === refCode);
+
+      if(inviter && inviter.id !== userId){
+        inviter.balance += 200;
+        inviter.referrals += 1;
+      }
+    }
   }
 
   saveDB(db);
 
-  bot.sendMessage(msg.chat.id, "Open Dashboard 👇", {
-    reply_markup: {
-      inline_keyboard: [[{ text: "Open App", web_app: { url: WEBAPP_URL } }]]
+  /* open mini app */
+  bot.sendMessage(userId,"Welcome!",{
+    reply_markup:{
+      inline_keyboard:[
+        [{ text:"Open App", web_app:{ url:"https://telegram-miniapp-p6qa.onrender.com/?v=10" }}]
+      ]
     }
   });
+
 });
 
-console.log("✅ Bot is running...");
+console.log("✅ Bot running...");
