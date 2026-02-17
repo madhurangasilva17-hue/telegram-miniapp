@@ -6,53 +6,396 @@
   <title>Mini App</title>
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
   <style>
-    body{font-family:system-ui,Arial;margin:20px}
-    .card{padding:16px;border-radius:16px;background:#fff;box-shadow:0 10px 25px rgba(0,0,0,.08);max-width:420px}
-    .muted{color:#6b7280}
-    .big{font-size:28px;font-weight:900}
+    :root{
+      --bg:#f6f9fc;
+      --card:#ffffff;
+      --muted:#7b8794;
+      --text:#111827;
+      --blue:#1e88e5;
+      --green:#1db954;
+      --red:#ef4444;
+      --radius:18px;
+      --shadow: 0 10px 30px rgba(17,24,39,.08);
+    }
+    *{box-sizing:border-box}
+    body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial;background:var(--bg);color:var(--text)}
+    .wrap{max-width:560px;margin:0 auto;padding:16px 16px 92px}
+    .top{display:flex;justify-content:space-between;gap:12px;align-items:flex-start;padding:6px 2px 14px}
+    .user{display:flex;gap:10px;align-items:center}
+    .avatar{width:44px;height:44px;border-radius:50%;background:linear-gradient(135deg,#dbeafe,#eef2ff);
+      display:grid;place-items:center;font-weight:900;color:#1f2937;box-shadow:0 6px 18px rgba(0,0,0,.08)}
+    .user h3{margin:0;font-size:18px;line-height:1.1}
+    .user p{margin:2px 0 0;color:var(--muted);font-size:13px}
+    .balance{text-align:right}
+    .balance .lbl{color:var(--muted);font-size:12px}
+    .balance .amt{font-size:22px;font-weight:900;color:var(--blue);margin-top:2px}
+
+    .hero{background:#e9f2ff;border-radius:22px;padding:18px;box-shadow:var(--shadow);margin-bottom:14px}
+    .hero h2{margin:0;font-size:28px}
+    .hero p{margin:6px 0 0;color:var(--muted)}
+
+    .grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin:12px 0}
+    .card{background:var(--card);border-radius:var(--radius);padding:16px;box-shadow:var(--shadow)}
+    .icon{width:44px;height:44px;border-radius:14px;display:grid;place-items:center;margin-bottom:10px;background:#eef6ff;color:var(--blue);font-weight:900}
+    .title{color:var(--muted);font-size:13px;margin:0}
+    .value{font-size:28px;font-weight:900;margin:6px 0 0}
+    .value.blue{color:var(--blue)}
+    .value.green{color:var(--green)}
+
+    .bar{width:100%;height:12px;background:#e5edf7;border-radius:999px;overflow:hidden}
+    .bar > span{display:block;height:100%;width:0;background:var(--blue);border-radius:999px;transition:width .3s ease}
+    .meta{display:flex;justify-content:space-between;margin-top:10px;color:var(--muted);font-size:13px}
+
+    .btnrow{display:flex;gap:10px;flex-wrap:wrap;margin-top:12px}
+    .btn{border:0;border-radius:16px;padding:12px 14px;font-weight:800;cursor:pointer}
+    .btn.primary{background:var(--blue);color:#fff;box-shadow:0 10px 25px rgba(30,136,229,.25)}
+    .btn.soft{background:#eef6ff;color:var(--blue)}
+    .btn.danger{background:#fee2e2;color:#991b1b}
+    .small{font-size:12px;color:var(--muted);margin-top:10px}
+    .input{width:100%;padding:12px 12px;border-radius:14px;border:1px solid #e5e7eb;outline:none}
+    .label{font-size:13px;color:var(--muted);margin:10px 0 6px}
+    .toast{margin-top:10px;font-size:13px;color:var(--muted)}
+    .ok{color:var(--green);font-weight:800}
+    .bad{color:var(--red);font-weight:800}
+    .hidden{display:none}
+
+    .bottom{
+      position:fixed;left:0;right:0;bottom:0;
+      padding:12px 10px 10px;background:rgba(246,249,252,.92);backdrop-filter: blur(10px);
+    }
+    .nav{
+      max-width:560px;margin:0 auto;
+      background:var(--card);box-shadow:var(--shadow);border-radius:22px;padding:10px 8px;
+      display:grid;grid-template-columns:repeat(4,1fr);gap:6px;
+    }
+    .nav button{
+      border:0;background:transparent;cursor:pointer;
+      color:var(--muted);font-size:12px;
+      display:flex;flex-direction:column;align-items:center;gap:6px;
+      padding:10px 6px;border-radius:16px;font-weight:700;
+    }
+    .nav button.active{color:var(--blue);background:#eef6ff;font-weight:900}
+    .dot{width:8px;height:8px;border-radius:50%;background:currentColor;opacity:.9}
+
+    @media (max-width:380px){
+      .hero h2{font-size:24px}
+      .value{font-size:24px}
+    }
   </style>
 </head>
 <body>
-  <div class="card">
-    <div class="muted">Welcome</div>
-    <div class="big" id="name">Loading...</div>
-    <hr/>
-    <div>Balance: <b><span id="balance">0</span> LKR</b></div>
-    <div class="muted">Referrals: <b><span id="refs">0</span></b></div>
-    <br/>
-    <div class="muted">Your referral link:</div>
-    <div id="reflink" style="word-break:break-all;"></div>
+  <div class="wrap">
+
+    <!-- TOP -->
+    <div class="top">
+      <div class="user">
+        <div class="avatar" id="avatar">U</div>
+        <div>
+          <h3 id="name">Loading...</h3>
+          <p id="username">@user</p>
+        </div>
+      </div>
+
+      <div class="balance">
+        <div class="lbl">Available</div>
+        <div class="amt"><span id="balance">0</span> LKR</div>
+      </div>
+    </div>
+
+    <!-- HOME -->
+    <section id="view-home">
+      <div class="hero">
+        <h2>Welcome Back! 👋</h2>
+        <p>Complete tasks & refer friends to earn rewards.</p>
+      </div>
+
+      <div class="grid2">
+        <div class="card">
+          <div class="icon">₨</div>
+          <p class="title">Total Balance</p>
+          <div class="value blue"><span id="bal2">0</span></div>
+          <div class="title">LKR</div>
+        </div>
+        <div class="card">
+          <div class="icon" style="background:#eafff1;color:#1db954;">👥</div>
+          <p class="title">Referrals</p>
+          <div class="value green"><span id="refs">0</span></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <p class="title" style="margin-bottom:8px;">Your Referral Link</p>
+        <div id="reflink" style="word-break:break-all;font-weight:800;"></div>
+        <div class="btnrow">
+          <button class="btn soft" id="copyLink">Copy</button>
+          <button class="btn primary" id="shareLink">Share</button>
+        </div>
+        <div class="small">Friends who start the bot using your link will be counted as referrals.</div>
+      </div>
+    </section>
+
+    <!-- TASK -->
+    <section id="view-task" class="hidden">
+      <div class="card">
+        <h3 style="margin:0 0 6px;font-size:22px;">Daily Tasks</h3>
+        <p style="margin:0 0 14px;color:var(--muted);">Complete up to <b>30</b> ads per day.</p>
+
+        <div class="bar"><span id="pbar"></span></div>
+        <div class="meta">
+          <div><b><span id="done">0</span>/30</b> completed</div>
+          <div><b><span id="left">30</span></b> left</div>
+        </div>
+
+        <div class="btnrow">
+          <button class="btn primary" id="doAd">Complete 1 Ad (+10 LKR)</button>
+          <button class="btn soft" id="refresh">Refresh</button>
+        </div>
+
+        <div class="toast" id="taskMsg"></div>
+      </div>
+    </section>
+
+    <!-- WITHDRAW -->
+    <section id="view-withdraw" class="hidden">
+      <div class="card">
+        <h3 style="margin:0 0 6px;font-size:22px;">Withdraw</h3>
+        <p style="margin:0 0 14px;color:var(--muted);">Minimum withdraw: <b>500 LKR</b></p>
+
+        <div class="label">Amount (LKR)</div>
+        <input class="input" id="wAmount" type="number" placeholder="500" />
+
+        <div class="label">Method</div>
+        <select class="input" id="wMethod">
+          <option value="BANK">Bank</option>
+          <option value="EZW">eZ Cash</option>
+          <option value="MCP">mCash</option>
+        </select>
+
+        <div class="label">Account / Number</div>
+        <input class="input" id="wAccount" placeholder="Account number or mobile number" />
+
+        <div class="btnrow">
+          <button class="btn primary" id="wSend">Send Request</button>
+          <button class="btn soft" id="wClear">Clear</button>
+        </div>
+
+        <div class="toast" id="wMsg"></div>
+      </div>
+    </section>
+
+    <!-- SUPPORT -->
+    <section id="view-support" class="hidden">
+      <div class="card">
+        <h3 style="margin:0 0 6px;font-size:22px;">Support</h3>
+        <p style="margin:0 0 14px;color:var(--muted);">Need help? Contact us.</p>
+
+        <div class="btnrow">
+          <button class="btn primary" id="openChat">Open Telegram Support</button>
+          <button class="btn soft" id="copyId">Copy My User ID</button>
+        </div>
+
+        <div class="small">
+          When you contact support, send your User ID for faster help.
+        </div>
+        <div class="toast" id="sMsg"></div>
+      </div>
+    </section>
+
   </div>
 
-  <script>
+  <!-- NAV -->
+  <div class="bottom">
+    <div class="nav">
+      <button data-tab="home" class="active"><span class="dot"></span>Home</button>
+      <button data-tab="task"><span class="dot"></span>Task</button>
+      <button data-tab="support"><span class="dot"></span>Support</button>
+      <button data-tab="withdraw"><span class="dot"></span>Withdraw</button>
+    </div>
+  </div>
+
+<script>
   const tg = window.Telegram.WebApp;
   tg.expand();
 
-  const user = tg.initDataUnsafe?.user;
+  // ✅ CHANGE THIS to your bot username (no @)
+  const BOT = "easycashsrilanka_bot";
 
-  const BOT = "easycashsrilanka_bot"; // @ නැතුව
+  let USER = null;
+  let USER_DB = null;
 
-  if (!user) {
-    document.getElementById("name").innerText = "Open inside Telegram";
-  } else {
-    // ensure user + code
-    fetch("/ensure-user", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ id: String(user.id), name: user.first_name || "User" })
-    })
-    .then(r => r.json())
-    .then(data => {
-      document.getElementById("name").innerText = data.name || user.first_name || "User";
-      document.getElementById("balance").innerText = data.balance ?? 0;
-      document.getElementById("refs").innerText = data.referrals ?? 0;
+  function $(id){ return document.getElementById(id); }
 
-      const code = (data.code || "").toUpperCase();
-      document.getElementById("reflink").innerText =
-        `https://t.me/${BOT}?start=${code}`;
+  function show(tab){
+    const map = {
+      home: "view-home",
+      task: "view-task",
+      withdraw: "view-withdraw",
+      support: "view-support"
+    };
+    for (const k of Object.values(map)) $(k).classList.add("hidden");
+    $(map[tab]).classList.remove("hidden");
+
+    document.querySelectorAll(".nav button").forEach(b=>{
+      b.classList.toggle("active", b.dataset.tab === tab);
     });
   }
-</script>
 
+  async function ensureUser(){
+    const r = await fetch("/ensure-user", {
+      method:"POST",
+      headers: { "Content-Type":"application/json" },
+      body: JSON.stringify({ id: String(USER.id), name: USER.first_name || "User" })
+    });
+    USER_DB = await r.json();
+  }
+
+  async function loadUser(){
+    const r = await fetch("/user/" + USER.id);
+    USER_DB = await r.json();
+  }
+
+  function refreshUI(){
+    const name = (USER_DB && USER_DB.name) ? USER_DB.name : (USER.first_name || "User");
+    $("name").innerText = name;
+    $("avatar").innerText = (name[0] || "U").toUpperCase();
+    $("username").innerText = USER.username ? ("@" + USER.username) : ("ID: " + USER.id);
+
+    const bal = USER_DB?.balance ?? 0;
+    $("balance").innerText = bal;
+    $("bal2").innerText = bal;
+    $("refs").innerText = USER_DB?.referrals ?? 0;
+
+    const code = (USER_DB?.code || "").toUpperCase();
+    const link = `https://t.me/${BOT}?start=${code}`;
+    $("reflink").innerText = link;
+
+    // daily progress (server stores by date)
+    const today = new Date();
+    const key = `${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,"0")}-${String(today.getDate()).padStart(2,"0")}`;
+    const done = USER_DB?.daily?.[key]?.done ?? 0;
+    const limit = 30;
+    $("done").innerText = done;
+    $("left").innerText = Math.max(0, limit - done);
+    $("pbar").style.width = Math.min(100, (done/limit)*100) + "%";
+  }
+
+  async function init(){
+    USER = tg.initDataUnsafe?.user;
+    if (!USER){
+      document.body.innerHTML = "<div style='padding:20px;font-family:system-ui'>Open this inside Telegram.</div>";
+      return;
+    }
+
+    // create user + code
+    await ensureUser();
+    await loadUser();
+    refreshUI();
+
+    // nav
+    document.querySelectorAll(".nav button").forEach(btn=>{
+      btn.addEventListener("click", async ()=>{
+        show(btn.dataset.tab);
+        await loadUser();
+        refreshUI();
+      });
+    });
+
+    // copy referral link
+    $("copyLink").onclick = async () => {
+      const text = $("reflink").innerText;
+      try{
+        await navigator.clipboard.writeText(text);
+        tg.HapticFeedback?.notificationOccurred("success");
+      }catch(e){}
+    };
+
+    // share referral link
+    $("shareLink").onclick = () => {
+      const text = $("reflink").innerText;
+      // inside Telegram: open share (fallback open link)
+      tg.openTelegramLink?.(`https://t.me/share/url?url=${encodeURIComponent(text)}&text=${encodeURIComponent("Join via my referral link")}`);
+    };
+
+    // task: complete ad
+    $("doAd").onclick = async () => {
+      $("taskMsg").innerText = "Processing...";
+      const r = await fetch("/task/complete-ad", {
+        method:"POST",
+        headers:{ "Content-Type":"application/json" },
+        body: JSON.stringify({ id: String(USER.id) })
+      });
+      const data = await r.json();
+
+      await loadUser();
+      refreshUI();
+
+      if (data.ok){
+        $("taskMsg").innerHTML = `<span class="ok">Done!</span> Balance updated.`;
+        tg.HapticFeedback?.notificationOccurred("success");
+      } else {
+        $("taskMsg").innerHTML = `<span class="bad">${data.message || "Failed"}</span>`;
+        tg.HapticFeedback?.notificationOccurred("error");
+      }
+    };
+
+    $("refresh").onclick = async () => {
+      await loadUser();
+      refreshUI();
+      $("taskMsg").innerText = "";
+    };
+
+    // withdraw
+    $("wClear").onclick = () => {
+      $("wAmount").value = "";
+      $("wAccount").value = "";
+      $("wMsg").innerText = "";
+    };
+
+    $("wSend").onclick = async () => {
+      $("wMsg").innerText = "Sending...";
+      const amount = Number($("wAmount").value);
+      const method = $("wMethod").value;
+      const account = $("wAccount").value.trim();
+
+      const r = await fetch("/withdraw/request", {
+        method:"POST",
+        headers:{ "Content-Type":"application/json" },
+        body: JSON.stringify({ id: String(USER.id), amount, method, account })
+      });
+      const data = await r.json();
+
+      if (data.ok){
+        await loadUser();
+        refreshUI();
+        $("wMsg").innerHTML = `<span class="ok">Request sent!</span> New balance: ${data.balance} LKR`;
+        tg.HapticFeedback?.notificationOccurred("success");
+      } else {
+        $("wMsg").innerHTML = `<span class="bad">${data.error || "Error"}</span>`;
+        tg.HapticFeedback?.notificationOccurred("error");
+      }
+    };
+
+    // support
+    $("copyId").onclick = async () => {
+      try{
+        await navigator.clipboard.writeText(String(USER.id));
+        $("sMsg").innerHTML = `<span class="ok">Copied!</span>`;
+      }catch(e){
+        $("sMsg").innerHTML = `<span class="bad">Copy failed</span>`;
+      }
+    };
+
+    $("openChat").onclick = () => {
+      // change to your support username/chat link
+      tg.openTelegramLink?.("https://t.me/YourSupportUsername");
+      $("sMsg").innerText = "Opening support...";
+    };
+
+    // default tab
+    show("home");
+  }
+
+  init();
+</script>
 </body>
 </html>
