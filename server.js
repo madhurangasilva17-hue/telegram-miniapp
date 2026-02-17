@@ -6,11 +6,13 @@ const app = express();
 // serve public folder
 app.use(express.static(path.join(__dirname, "public")));
 
-// root -> index.html (extra safe)
+// root -> index.html
 app.get("/", (req, res) => {
   res.sendFile(path.join(__dirname, "public", "index.html"));
 });
 
-app.listen(3000, () => {
-  console.log("✅ Server running: http://localhost:3000");
+// ✅ Render needs process.env.PORT
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, () => {
+  console.log("✅ Server running on port:", PORT);
 });
