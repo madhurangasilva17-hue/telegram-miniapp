@@ -28,7 +28,8 @@ bot.onText(/\/start\s?(.*)?/, (msg, match) => {
 
   saveDB(db);
 
-  const WEBAPP_URL = "https://telegram-miniapp-p6qa.onrender.com";
+  const WEBAPP_URL = "https://telegram-miniapp-p6qa.onrender.com/?v=3";
+
 
   bot.sendMessage(msg.chat.id, "Open Dashboard 👇", {
     reply_markup: {
