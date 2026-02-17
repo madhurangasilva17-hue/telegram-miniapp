@@ -25,30 +25,34 @@
   </div>
 
   <script>
-    const tg = window.Telegram.WebApp;
-    tg.expand();
+  const tg = window.Telegram.WebApp;
+  tg.expand();
 
-    const user = tg.initDataUnsafe?.user;
+  const user = tg.initDataUnsafe?.user;
 
-    // If opened outside Telegram (browser test)
-    if (!user) {
-      document.getElementById("name").innerText = "Open inside Telegram";
-    } else {
-      document.getElementById("name").innerText = user.first_name || "User";
+  const BOT = "easycashsrilanka_bot"; // @ නැතුව
 
-      fetch("/user/" + user.id)
-        .then(r => r.json())
-        .then(d => {
-          document.getElementById("balance").innerText = d.balance ?? 0;
-          document.getElementById("refs").innerText = d.referrals ?? 0;
-        });
+  if (!user) {
+    document.getElementById("name").innerText = "Open inside Telegram";
+  } else {
+    // ensure user + code
+    fetch("/ensure-user", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id: String(user.id), name: user.first_name || "User" })
+    })
+    .then(r => r.json())
+    .then(data => {
+      document.getElementById("name").innerText = data.name || user.first_name || "User";
+      document.getElementById("balance").innerText = data.balance ?? 0;
+      document.getElementById("refs").innerText = data.referrals ?? 0;
 
-      // Change this to your bot username later
-     const BOT = "easycashsrilanka_bot";
-
+      const code = (data.code || "").toUpperCase();
       document.getElementById("reflink").innerText =
-        `https://t.me/${BOT}?start=${user.id}`;
-    }
-  </script>
+        `https://t.me/${BOT}?start=${code}`;
+    });
+  }
+</script>
+
 </body>
 </html>
