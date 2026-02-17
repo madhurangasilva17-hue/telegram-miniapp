@@ -1,0 +1,53 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Mini App</title>
+  <script src="https://telegram.org/js/telegram-web-app.js"></script>
+  <style>
+    body{font-family:system-ui,Arial;margin:20px}
+    .card{padding:16px;border-radius:16px;background:#fff;box-shadow:0 10px 25px rgba(0,0,0,.08);max-width:420px}
+    .muted{color:#6b7280}
+    .big{font-size:28px;font-weight:900}
+  </style>
+</head>
+<body>
+  <div class="card">
+    <div class="muted">Welcome</div>
+    <div class="big" id="name">Loading...</div>
+    <hr/>
+    <div>Balance: <b><span id="balance">0</span> LKR</b></div>
+    <div class="muted">Referrals: <b><span id="refs">0</span></b></div>
+    <br/>
+    <div class="muted">Your referral link:</div>
+    <div id="reflink" style="word-break:break-all;"></div>
+  </div>
+
+  <script>
+    const tg = window.Telegram.WebApp;
+    tg.expand();
+
+    const user = tg.initDataUnsafe?.user;
+
+    // If opened outside Telegram (browser test)
+    if (!user) {
+      document.getElementById("name").innerText = "Open inside Telegram";
+    } else {
+      document.getElementById("name").innerText = user.first_name || "User";
+
+      fetch("/user/" + user.id)
+        .then(r => r.json())
+        .then(d => {
+          document.getElementById("balance").innerText = d.balance ?? 0;
+          document.getElementById("refs").innerText = d.referrals ?? 0;
+        });
+
+      // Change this to your bot username later
+      const BOT = "YOUR_BOT_USERNAME";
+      document.getElementById("reflink").innerText =
+        `https://t.me/${BOT}?start=${user.id}`;
+    }
+  </script>
+</body>
+</html>
